@@ -173,13 +173,11 @@ void Ready::handleState(PlaceOrder* order) {
 }
 std::string Ready::getStateName() const { return "READY"; }
 
-// ==================== PLACE ORDER IMPLEMENTATION ====================
+// ==================== MERGED PLACEORDER IMPLEMENTATION ====================
 PlaceOrder::PlaceOrder() : discountStrategy(new RegularPrice()), currentState(new OrderStarted()) {}
 
 PlaceOrder::~PlaceOrder() {
-    for (auto pizza : pizzas) {
-        delete pizza;
-    }
+    clearOrder();
     delete discountStrategy;
     delete currentState;
 }
@@ -205,6 +203,10 @@ int PlaceOrder::getPizzaCount() {
     return pizzas.size(); 
 }
 
+double PlaceOrder::getTotal() { 
+    return calculateTotal(); 
+}
+
 void PlaceOrder::processOrder() {
     currentState->handleState(this);
 }
@@ -221,8 +223,28 @@ std::string PlaceOrder::getStatus() const {
     return currentState->getStateName();
 }
 
-double PlaceOrder::getTotal() { 
-    return calculateTotal(); 
+void PlaceOrder::printOrderSummary() {
+    std::cout << "\n=== Order Summary ===\n";
+    std::cout << "Number of pizzas: " << getPizzaCount() << std::endl;
+    std::cout << "Total cost: R" << getTotal() << std::endl;
+    std::cout << "Discount applied: " << discountStrategy->getStrategyName() << std::endl;
+    std::cout << "Current status: " << getStatus() << std::endl;
+    
+    if (!pizzas.empty()) {
+        std::cout << "\nPizzas in order:\n";
+        for (size_t i = 0; i < pizzas.size(); i++) {
+            std::cout << (i + 1) << ". " << pizzas[i]->getName() << " - R" << pizzas[i]->getPrice() << std::endl;
+        }
+    }
+}
+
+void PlaceOrder::clearOrder() {
+    for (auto pizza : pizzas) {
+        delete pizza;
+    }
+    pizzas.clear();
+    setDiscountStrategy(new RegularPrice());
+    setState(new OrderStarted());
 }
 
 // ==================== PIZZA FACTORY IMPLEMENTATION ====================
