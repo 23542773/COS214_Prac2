@@ -89,8 +89,8 @@ void testStatePattern() {
     std::cout << "\n=== Testing State Pattern ===\n";
     
     Order order;
-    PlaceOrder placeOrder;
-    order.setPlaceOrder(&placeOrder);
+    PlaceOrder* placeOrder = new PlaceOrder(); // Create on heap to avoid issues
+    order.setPlaceOrder(placeOrder);
     
     // Add a test pizza
     ToppingGroup* pizza = new ToppingGroup("Test Pizza");
@@ -112,6 +112,7 @@ void testStatePattern() {
 void testObserverPattern() {
     std::cout << "\n=== Testing Observer Pattern ===\n";
     
+    // Create customers and website on the stack (not heap)
     Customer customer1("Alice");
     Customer customer2("Bob");
     Website website;
@@ -128,7 +129,11 @@ void testObserverPattern() {
     pizza->add(new Topping(15.00, "Cheese"));
     
     std::cout << "Adding pizza to menu (should trigger notifications):\n";
-    menu.addPizza(new BasePizza(pizza));
+    BasePizza* basePizza = new BasePizza(pizza);
+    menu.addPizza(basePizza);
+    
+    // Clean up the pizza we added
+    delete basePizza;
 }
 
 void testPizzaFactory() {
@@ -166,7 +171,7 @@ void testPizzaFactory() {
 void testOrderProcessing() {
     std::cout << "\n=== Testing Complete Order Processing ===\n";
     
-    // Create customers
+    // Create customers on stack
     Customer john("John");
     Customer sarah("Sarah");
     
@@ -179,7 +184,7 @@ void testOrderProcessing() {
     specialsMenu.addObserver(&john);
     specialsMenu.addObserver(&sarah);
     
-    // Create some pizzas
+    // Create some pizzas for the menu
     Pizza* pepperoni = PizzaFactory::createPepperoniPizza();
     Pizza* vegetarian = PizzaFactory::createVegetarianPizza();
     Pizza* meatLovers = PizzaFactory::createMeatLoversPizza();
@@ -193,8 +198,8 @@ void testOrderProcessing() {
     
     // Create a customer order
     Order order;
-    PlaceOrder placeOrder;
-    order.setPlaceOrder(&placeOrder);
+    PlaceOrder* placeOrder = new PlaceOrder();
+    order.setPlaceOrder(placeOrder);
     
     // Add pizzas to order
     order.addPizza(PizzaFactory::createPepperoniPizza());
@@ -227,6 +232,12 @@ void testOrderProcessing() {
     std::cout << "Pizzas: " << order.getPizzaCount() << std::endl;
     std::cout << "Total: R" << order.getTotal() << std::endl;
     std::cout << "Status: " << order.getStatus() << std::endl;
+    
+    // Clean up menu pizzas
+    delete pepperoni;
+    delete vegetarian;
+    delete meatLovers;
+    delete vegDeluxe;
 }
 
 void testEdgeCases() {
@@ -251,8 +262,8 @@ void testEdgeCases() {
     
     // Test order state with no pizzas
     Order emptyStateOrder;
-    PlaceOrder emptyPlaceOrder;
-    emptyStateOrder.setPlaceOrder(&emptyPlaceOrder);
+    PlaceOrder* emptyPlaceOrder = new PlaceOrder();
+    emptyStateOrder.setPlaceOrder(emptyPlaceOrder);
     std::cout << "Empty order state: " << emptyStateOrder.getStatus() << std::endl;
     emptyStateOrder.processOrder();
     std::cout << "Empty order state after processing: " << emptyStateOrder.getStatus() << std::endl;

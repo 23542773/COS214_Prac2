@@ -1,6 +1,7 @@
 #include "PizzaShop.h"
 #include <cstdlib>
 #include <ctime>
+#include <algorithm>
 
 // ==================== COMPOSITE PATTERN IMPLEMENTATION ====================
 PizzaComponent::PizzaComponent(double p, std::string n) : price(p), name(n) {}
@@ -85,26 +86,36 @@ void Website::update(const std::string& message) {
 }
 
 Menu::~Menu() {
-    for (auto observer : observers) {
-        delete observer;
-    }
-    for (auto pizza : pizzas) {
-        delete pizza;
-    }
+    // Don't delete observers - they're managed elsewhere
+    // Don't delete pizzas - they're managed elsewhere
+    observers.clear();
+    pizzas.clear();
 }
-void Menu::addObserver(Observer* observer) { observers.push_back(observer); }
+
+void Menu::addObserver(Observer* observer) { 
+    observers.push_back(observer); 
+}
+
 void Menu::removeObserver(Observer* observer) {
-    // Implementation to remove observer
+    auto it = std::find(observers.begin(), observers.end(), observer);
+    if (it != observers.end()) {
+        observers.erase(it);
+    }
 }
 
 void PizzaMenu::addPizza(Pizza* pizza) {
     pizzas.push_back(pizza);
     notifyObservers("New pizza added to menu: " + pizza->getName());
 }
+
 void PizzaMenu::removePizza(Pizza* pizza) {
-    // Implementation to remove pizza
-    notifyObservers("Pizza removed from menu: " + pizza->getName());
+    auto it = std::find(pizzas.begin(), pizzas.end(), pizza);
+    if (it != pizzas.end()) {
+        pizzas.erase(it);
+        notifyObservers("Pizza removed from menu: " + pizza->getName());
+    }
 }
+
 void PizzaMenu::notifyObservers(const std::string& message) {
     for (auto observer : observers) {
         observer->update(message);
@@ -115,10 +126,15 @@ void SpecialsMenu::addPizza(Pizza* pizza) {
     pizzas.push_back(pizza);
     notifyObservers("New special added: " + pizza->getName());
 }
+
 void SpecialsMenu::removePizza(Pizza* pizza) {
-    // Implementation to remove pizza
-    notifyObservers("Special removed: " + pizza->getName());
+    auto it = std::find(pizzas.begin(), pizzas.end(), pizza);
+    if (it != pizzas.end()) {
+        pizzas.erase(it);
+        notifyObservers("Special removed: " + pizza->getName());
+    }
 }
+
 void SpecialsMenu::notifyObservers(const std::string& message) {
     for (auto observer : observers) {
         observer->update(message);
@@ -130,14 +146,12 @@ OrderState::~OrderState() {}
 
 void OrderStartedState::handleState(Order* order) {
     std::cout << "Order has been received and is starting...\n";
-    // Transition to PendingState
     order->setState(new PendingState());
 }
 std::string OrderStartedState::getStateName() const { return "ORDER STARTED"; }
 
 void PendingState::handleState(Order* order) {
     std::cout << "Order is pending (e.g., awaiting kitchen availability)...\n";
-    // Transition to PreparingState
     order->setState(new PreparingState());
 }
 std::string PendingState::getStateName() const { return "PENDING"; }
@@ -145,7 +159,6 @@ std::string PendingState::getStateName() const { return "PENDING"; }
 void PreparingState::handleState(Order* order) {
     std::cout << "Pizza is being prepared...\n";
     
-    // Simulate a condition (20% chance of issue)
     bool hasIssue = (std::rand() % 100) < 20;
     
     if (hasIssue) {
@@ -159,24 +172,29 @@ void PreparingState::handleState(Order* order) {
 std::string PreparingState::getStateName() const { return "PREPARING"; }
 
 void ReadyState::handleState(Order* order) {
+    (void)order; // Suppress unused parameter warning
     std::cout << "ORDER IS READY FOR PICKUP! :)\n";
-    // Terminal state
 }
 std::string ReadyState::getStateName() const { return "READY"; }
 
 // ==================== PLACE ORDER & ORDER IMPLEMENTATION ====================
 PlaceOrder::PlaceOrder() : discountStrategy(new RegularPrice()) {}
+
 PlaceOrder::~PlaceOrder() {
-    for (auto pizza : pizzas) {
-        delete pizza;
-    }
+    // Don't delete pizzas - they're managed elsewhere
     delete discountStrategy;
+    pizzas.clear();
 }
-void PlaceOrder::addPizza(Pizza* pizza) { pizzas.push_back(pizza); }
+
+void PlaceOrder::addPizza(Pizza* pizza) { 
+    pizzas.push_back(pizza); 
+}
+
 void PlaceOrder::setDiscountStrategy(DiscountStrategy* strategy) {
     delete discountStrategy;
     discountStrategy = strategy;
 }
+
 double PlaceOrder::calculateTotal() {
     double total = 0;
     for (auto pizza : pizzas) {
@@ -184,7 +202,11 @@ double PlaceOrder::calculateTotal() {
     }
     return discountStrategy->applyDiscount(total);
 }
-int PlaceOrder::getPizzaCount() { return pizzas.size(); }
+
+int PlaceOrder::getPizzaCount() { 
+    return pizzas.size(); 
+}
+
 void PlaceOrder::processOrder() {
     std::cout << "Processing order with " << getPizzaCount() << " pizzas\n";
     std::cout << "Total cost: R" << calculateTotal() << std::endl;
@@ -192,6 +214,7 @@ void PlaceOrder::processOrder() {
 }
 
 Order::Order() : discountStrategy(new RegularPrice()), currentState(new OrderStartedState()), placeOrder(nullptr) {}
+
 Order::~Order() {
     for (auto pizza : pizzas) {
         delete pizza;
@@ -200,33 +223,65 @@ Order::~Order() {
     delete currentState;
     delete placeOrder;
 }
+
 void Order::addPizza(Pizza* pizza) { 
     pizzas.push_back(pizza); 
     if (placeOrder) {
         placeOrder->addPizza(pizza);
     }
 }
+
 void Order::setDiscountStrategy(DiscountStrategy* strategy) {
-    delete discountStrategy;
-    discountStrategy = strategy;
+    if (discountStrategy != strategy) {
+        delete discountStrategy;
+        discountStrategy = strategy;
+    }
+    
     if (placeOrder) {
-        placeOrder->setDiscountStrategy(strategy);
+        // Create a new strategy for PlaceOrder instead of sharing the same instance
+        DiscountStrategy* newStrategy = nullptr;
+        if (dynamic_cast<RegularPrice*>(strategy)) {
+            newStrategy = new RegularPrice();
+        } else if (dynamic_cast<BulkDiscount*>(strategy)) {
+            newStrategy = new BulkDiscount();
+        } else if (dynamic_cast<FamilyDiscount*>(strategy)) {
+            newStrategy = new FamilyDiscount();
+        }
+        if (newStrategy) {
+            placeOrder->setDiscountStrategy(newStrategy);
+        }
     }
 }
+
 void Order::setPlaceOrder(PlaceOrder* po) { 
     placeOrder = po; 
-    // Transfer existing pizzas and discount strategy
+    // Transfer existing pizzas
     for (auto pizza : pizzas) {
         placeOrder->addPizza(pizza);
     }
-    placeOrder->setDiscountStrategy(discountStrategy);
+    
+    // Create a new strategy for PlaceOrder
+    DiscountStrategy* newStrategy = nullptr;
+    if (dynamic_cast<RegularPrice*>(discountStrategy)) {
+        newStrategy = new RegularPrice();
+    } else if (dynamic_cast<BulkDiscount*>(discountStrategy)) {
+        newStrategy = new BulkDiscount();
+    } else if (dynamic_cast<FamilyDiscount*>(discountStrategy)) {
+        newStrategy = new FamilyDiscount();
+    }
+    if (newStrategy) {
+        placeOrder->setDiscountStrategy(newStrategy);
+    }
 }
+
 double Order::getTotal() { 
     return placeOrder ? placeOrder->calculateTotal() : 0; 
 }
+
 int Order::getPizzaCount() { 
     return placeOrder ? placeOrder->getPizzaCount() : pizzas.size(); 
 }
+
 void Order::setState(OrderState* newState) {
     if (currentState != nullptr) {
         delete currentState;
@@ -234,9 +289,11 @@ void Order::setState(OrderState* newState) {
     currentState = newState;
     std::cout << "Order state changed to: " << currentState->getStateName() << std::endl;
 }
+
 void Order::processOrder() {
     currentState->handleState(this);
 }
+
 std::string Order::getStatus() const {
     return currentState->getStateName();
 }
@@ -263,7 +320,6 @@ Pizza* PizzaFactory::createVegetarianPizza() {
 }
 
 Pizza* PizzaFactory::createMeatLoversPizza() {
-    // Meat Lovers extends Pepperoni
     ToppingGroup* meatLovers = new ToppingGroup("Meat Lovers Pizza");
     meatLovers->add(new Topping(10.00, "Dough"));
     meatLovers->add(new Topping(5.00, "Tomato Sauce"));
@@ -275,7 +331,6 @@ Pizza* PizzaFactory::createMeatLoversPizza() {
 }
 
 Pizza* PizzaFactory::createVegetarianDeluxePizza() {
-    // Vegetarian Deluxe extends Vegetarian
     ToppingGroup* vegDeluxe = new ToppingGroup("Vegetarian Deluxe Pizza");
     vegDeluxe->add(new Topping(10.00, "Dough"));
     vegDeluxe->add(new Topping(5.00, "Tomato Sauce"));
@@ -295,4 +350,3 @@ Pizza* PizzaFactory::addExtraCheese(Pizza* pizza) {
 Pizza* PizzaFactory::addStuffedCrust(Pizza* pizza) {
     return new StuffedCrust(pizza);
 }
-
