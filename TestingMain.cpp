@@ -274,6 +274,73 @@ void testEdgeCases() {
     std::cout << "Empty order state after processing: " << emptyStateOrder.getStatus() << std::endl;
 }
 
+void testDecoratorPrintMethods() {
+    std::cout << "\n=== Testing Decorator Print Methods ===\n";
+    
+    Pizza* base = PizzaFactory::createPepperoniPizza();
+    
+    ExtraCheese* withCheese = new ExtraCheese(base);
+    std::cout << "Testing ExtraCheese printPizza():\n";
+    withCheese->printPizza();
+    
+    StuffedCrust* withCrust = new StuffedCrust(PizzaFactory::createVegetarianPizza());
+    std::cout << "Testing StuffedCrust printPizza():\n";
+    withCrust->printPizza();
+    
+    delete withCheese;
+    delete withCrust;
+}
+
+void testObserverRemoval() {
+    std::cout << "\n=== Testing Observer Removal ===\n";
+    
+    Customer alice("Alice");
+    Customer bob("Bob");
+    Website website;
+    
+    PizzaMenu menu;
+    menu.addObserver(&alice);
+    menu.addObserver(&bob);
+    menu.addObserver(&website);
+    
+    std::cout << "Adding pizza with all observers:\n";
+    menu.addPizza(PizzaFactory::createPepperoniPizza());
+    
+    std::cout << "\nRemoving Alice as observer:\n";
+    menu.removeObserver(&alice);
+    
+    std::cout << "Adding another pizza (Alice shouldn't be notified):\n";
+    menu.addPizza(PizzaFactory::createVegetarianPizza());
+    
+    // Clean up - note: the pizzas added to menu aren't automatically deleted
+    // so we need to be careful about memory management here
+}
+
+void testMenuPizzaRemoval() {
+    std::cout << "\n=== Testing Menu Pizza Removal ===\n";
+    
+    Customer customer("TestCustomer");
+    PizzaMenu pizzaMenu;
+    SpecialsMenu specialsMenu;
+    
+    pizzaMenu.addObserver(&customer);
+    specialsMenu.addObserver(&customer);
+    
+    Pizza* pizza1 = PizzaFactory::createPepperoniPizza();
+    Pizza* pizza2 = PizzaFactory::createVegetarianPizza();
+    
+    std::cout << "Adding pizzas to menus:\n";
+    pizzaMenu.addPizza(pizza1);
+    specialsMenu.addPizza(pizza2);
+    
+    std::cout << "\nRemoving pizzas from menus:\n";
+    pizzaMenu.removePizza(pizza1);
+    specialsMenu.removePizza(pizza2);
+    
+    delete pizza1;
+    delete pizza2;
+}
+
 int main() {
     std::srand(static_cast<unsigned int>(std::time(nullptr)));
     
@@ -287,6 +354,11 @@ int main() {
     testPizzaFactory();
     testOrderProcessing();
     testEdgeCases();
+
+    //edge case
+    testDecoratorPrintMethods();
+    testObserverRemoval();              // NEW
+    testMenuPizzaRemoval();             // NEW
     
     std::cout << "\n=== All tests completed successfully ===\n";
     
