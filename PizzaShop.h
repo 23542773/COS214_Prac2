@@ -1,4 +1,3 @@
-
 #ifndef PIZZASHOP_H
 #define PIZZASHOP_H
 
@@ -7,13 +6,11 @@
 #include <string>
 #include <map>
 #include <list>
-#include <memory>
 
 // Forward declarations
-class PizzaComponent;
+class Pizza;
 class Topping;
 class ToppingGroup;
-class Pizza;
 class BasePizza;
 class PizzaDecorator;
 class ExtraCheese;
@@ -22,71 +19,61 @@ class DiscountStrategy;
 class RegularPrice;
 class BulkDiscount;
 class FamilyDiscount;
-class PlaceOrder;
 class Observer;
 class Customer;
 class Website;
 class Menu;
 class PizzaMenu;
 class SpecialsMenu;
-class OrderState;
-class OrderStartedState;
-class PendingState;
-class PreparingState;
-class ReadyState;
-class Order;
+class OrderPhase;
+class OrderStarted;
+class Pending;
+class Preparing;
+class Ready;
 
 // ==================== COMPOSITE PATTERN ====================
-class PizzaComponent {
+class Pizza {
 protected:
     double price;
     std::string name;
     
 public:
-    PizzaComponent(double p, std::string n);
-    virtual ~PizzaComponent();
+    Pizza(double p, std::string n);
+    virtual ~Pizza();
     virtual std::string getName() = 0;
     virtual double getPrice() = 0;
 };
 
-class Topping : public PizzaComponent {
+class Topping : public Pizza {
 public:
     Topping(double p, std::string n);
     std::string getName() override;
     double getPrice() override;
 };
 
-class ToppingGroup : public PizzaComponent {
+class ToppingGroup : public Pizza {
 private:
-    std::vector<PizzaComponent*> toppings;
+    std::vector<Pizza*> toppings;
     
 public:
     ToppingGroup(std::string n);
     ~ToppingGroup();
-    void add(PizzaComponent* component);
+    void add(Pizza* component);
     std::string getName() override;
     double getPrice() override;
 };
 
 // ==================== DECORATOR PATTERN ====================
-class Pizza {
-public:
-    virtual ~Pizza();
-    virtual double getPrice() = 0;
-    virtual std::string getName() = 0;
-    virtual void printPizza() = 0;
-};
-
 class BasePizza : public Pizza {
 private:
-    PizzaComponent* toppings;
+    Pizza* toppings;
     
 public:
-    BasePizza(PizzaComponent* t);
+    BasePizza(Pizza* t);
     ~BasePizza();
     double getPrice() override;
     std::string getName() override;
-    void printPizza() override;
+    void printPizza();
 };
 
 class PizzaDecorator : public Pizza {
@@ -106,7 +93,7 @@ public:
     ExtraCheese(Pizza* p, double cost = 12.00);
     double getPrice() override;
     std::string getName() override;
-    void printPizza() override;
+    void printPizza();
 };
 
 class StuffedCrust : public PizzaDecorator {
@@ -117,7 +104,7 @@ public:
     StuffedCrust(Pizza* p, double cost = 20.00);
     double getPrice() override;
     std::string getName() override;
-    void printPizza() override;
+    void printPizza();
 };
 
 // ==================== STRATEGY PATTERN ====================
@@ -197,44 +184,45 @@ public:
 };
 
 // ==================== STATE PATTERN ====================
-class Order;
+class PlaceOrder;
 
-class OrderState {
+class OrderPhase {
 public:
-    virtual ~OrderState();
-    virtual void handleState(Order* order) = 0;
+    virtual ~OrderPhase();
+    virtual void handleState(PlaceOrder* order) = 0;
     virtual std::string getStateName() const = 0;
 };
 
-class OrderStartedState : public OrderState {
+class OrderStarted : public OrderPhase {
 public:
-    void handleState(Order* order) override;
+    void handleState(PlaceOrder* order) override;
     std::string getStateName() const override;
 };
 
-class PendingState : public OrderState {
+class Pending : public OrderPhase {
 public:
-    void handleState(Order* order) override;
+    void handleState(PlaceOrder* order) override;
     std::string getStateName() const override;
 };
 
-class PreparingState : public OrderState {
+class Preparing : public OrderPhase {
 public:
-    void handleState(Order* order) override;
+    void handleState(PlaceOrder* order) override;
     std::string getStateName() const override;
 };
 
-class ReadyState : public OrderState {
+class Ready : public OrderPhase {
 public:
-    void handleState(Order* order) override;
+    void handleState(PlaceOrder* order) override;
     std::string getStateName() const override;
 };
 
-// ==================== PLACE ORDER & ORDER ====================
+// ==================== PLACE ORDER ====================
 class PlaceOrder {
 private:
-    DiscountStrategy* discountStrategy;
     std::vector<Pizza*> pizzas;
+    DiscountStrategy* discountStrategy;
+    OrderPhase* currentState;
     
 public:
     PlaceOrder();
@@ -244,29 +232,12 @@ public:
     double calculateTotal();
     int getPizzaCount();
     void processOrder();
-};
-
-class Order {
-private:
-    std::vector<Pizza*> pizzas;
-    DiscountStrategy* discountStrategy;
-    OrderState* currentState;
-    PlaceOrder* placeOrder;
-    
-public:
-    Order();
-    ~Order();
-    void addPizza(Pizza* pizza);
-    void setDiscountStrategy(DiscountStrategy* strategy);
-    void setPlaceOrder(PlaceOrder* po);
-    double getTotal();
-    int getPizzaCount();
-    void setState(OrderState* newState);
-    void processOrder();
+    void setState(OrderPhase* newState);
     std::string getStatus() const;
+    double getTotal();
 };
 
-// ==================== PIZZA FACTORY ====================
+// ==================== Creation methods ====================
 class PizzaFactory {
 public:
     static Pizza* createPepperoniPizza();

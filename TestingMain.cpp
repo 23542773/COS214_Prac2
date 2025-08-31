@@ -88,9 +88,7 @@ void testStrategyPattern() {
 void testStatePattern() {
     std::cout << "\n=== Testing State Pattern ===\n";
     
-    Order order;
-    PlaceOrder* placeOrder = new PlaceOrder(); // Create on heap to avoid issues
-    order.setPlaceOrder(placeOrder);
+    PlaceOrder order;
     
     // Add a test pizza
     ToppingGroup* pizza = new ToppingGroup("Test Pizza");
@@ -197,9 +195,7 @@ void testOrderProcessing() {
     pizzaMenu.addPizza(vegDeluxe);
     
     // Create a customer order
-    Order order;
-    PlaceOrder* placeOrder = new PlaceOrder();
-    order.setPlaceOrder(placeOrder);
+    PlaceOrder order;
     
     // Add pizzas to order
     order.addPizza(PizzaFactory::createPepperoniPizza());
@@ -261,9 +257,7 @@ void testEdgeCases() {
     std::cout << "5 pizza order with bulk discount: R" << bulkOrder.calculateTotal() << std::endl;
     
     // Test order state with no pizzas
-    Order emptyStateOrder;
-    PlaceOrder* emptyPlaceOrder = new PlaceOrder();
-    emptyStateOrder.setPlaceOrder(emptyPlaceOrder);
+    PlaceOrder emptyStateOrder;
     std::cout << "Empty order state: " << emptyStateOrder.getStatus() << std::endl;
     emptyStateOrder.processOrder();
     std::cout << "Empty order state after processing: " << emptyStateOrder.getStatus() << std::endl;

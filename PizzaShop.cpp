@@ -4,20 +4,20 @@
 #include <algorithm>
 
 // ==================== COMPOSITE PATTERN IMPLEMENTATION ====================
-PizzaComponent::PizzaComponent(double p, std::string n) : price(p), name(n) {}
-PizzaComponent::~PizzaComponent() {}
+Pizza::Pizza(double p, std::string n) : price(p), name(n) {}
+Pizza::~Pizza() {}
 
-Topping::Topping(double p, std::string n) : PizzaComponent(p, n) {}
+Topping::Topping(double p, std::string n) : Pizza(p, n) {}
 std::string Topping::getName() { return name; }
 double Topping::getPrice() { return price; }
 
-ToppingGroup::ToppingGroup(std::string n) : PizzaComponent(0, n) {}
+ToppingGroup::ToppingGroup(std::string n) : Pizza(0, n) {}
 ToppingGroup::~ToppingGroup() {
     for (auto topping : toppings) {
         delete topping;
     }
 }
-void ToppingGroup::add(PizzaComponent* component) {
+void ToppingGroup::add(Pizza* component) {
     toppings.push_back(component);
     price += component->getPrice();
 }
@@ -33,9 +33,7 @@ std::string ToppingGroup::getName() {
 double ToppingGroup::getPrice() { return price; }
 
 // ==================== DECORATOR PATTERN IMPLEMENTATION ====================
-Pizza::~Pizza() {}
-
-BasePizza::BasePizza(PizzaComponent* t) : toppings(t) {}
+BasePizza::BasePizza(Pizza* t) : Pizza(t->getPrice(), t->getName()), toppings(t) {}
 BasePizza::~BasePizza() { delete toppings; }
 double BasePizza::getPrice() { return toppings->getPrice(); }
 std::string BasePizza::getName() { return toppings->getName(); }
@@ -43,7 +41,7 @@ void BasePizza::printPizza() {
     std::cout << "Pizza: " << getName() << " - R" << getPrice() << std::endl;
 }
 
-PizzaDecorator::PizzaDecorator(Pizza* p) : pizza(p) {}
+PizzaDecorator::PizzaDecorator(Pizza* p) : Pizza(p->getPrice(), p->getName()), pizza(p) {}
 PizzaDecorator::~PizzaDecorator() { delete pizza; }
 
 ExtraCheese::ExtraCheese(Pizza* p, double cost) : PizzaDecorator(p), extraCost(cost) {}
@@ -86,8 +84,6 @@ void Website::update(const std::string& message) {
 }
 
 Menu::~Menu() {
-    // Don't delete observers - they're managed elsewhere
-    // Don't delete pizzas - they're managed elsewhere
     observers.clear();
     pizzas.clear();
 }
@@ -142,48 +138,50 @@ void SpecialsMenu::notifyObservers(const std::string& message) {
 }
 
 // ==================== STATE PATTERN IMPLEMENTATION ====================
-OrderState::~OrderState() {}
+OrderPhase::~OrderPhase() {}
 
-void OrderStartedState::handleState(Order* order) {
+void OrderStarted::handleState(PlaceOrder* order) {
     std::cout << "Order has been received and is starting...\n";
-    order->setState(new PendingState());
+    order->setState(new Pending());
 }
-std::string OrderStartedState::getStateName() const { return "ORDER STARTED"; }
+std::string OrderStarted::getStateName() const { return "ORDER STARTED"; }
 
-void PendingState::handleState(Order* order) {
+void Pending::handleState(PlaceOrder* order) {
     std::cout << "Order is pending (e.g., awaiting kitchen availability)...\n";
-    order->setState(new PreparingState());
+    order->setState(new Preparing());
 }
-std::string PendingState::getStateName() const { return "PENDING"; }
+std::string Pending::getStateName() const { return "PENDING"; }
 
-void PreparingState::handleState(Order* order) {
+void Preparing::handleState(PlaceOrder* order) {
     std::cout << "Pizza is being prepared...\n";
     
     bool hasIssue = (std::rand() % 100) < 20;
     
     if (hasIssue) {
         std::cout << "*** Issue discovered! Moving back to PENDING. ***\n";
-        order->setState(new PendingState());
+        order->setState(new Pending());
     } else {
         std::cout << "Preparation complete! Moving to READY.\n";
-        order->setState(new ReadyState());
+        order->setState(new Ready());
     }
 }
-std::string PreparingState::getStateName() const { return "PREPARING"; }
+std::string Preparing::getStateName() const { return "PREPARING"; }
 
-void ReadyState::handleState(Order* order) {
+void Ready::handleState(PlaceOrder* order) {
     (void)order; // Suppress unused parameter warning
     std::cout << "ORDER IS READY FOR PICKUP! :)\n";
 }
-std::string ReadyState::getStateName() const { return "READY"; }
+std::string Ready::getStateName() const { return "READY"; }
 
-// ==================== PLACE ORDER & ORDER IMPLEMENTATION ====================
-PlaceOrder::PlaceOrder() : discountStrategy(new RegularPrice()) {}
+// ==================== PLACE ORDER IMPLEMENTATION ====================
+PlaceOrder::PlaceOrder() : discountStrategy(new RegularPrice()), currentState(new OrderStarted()) {}
 
 PlaceOrder::~PlaceOrder() {
-    // Don't delete pizzas - they're managed elsewhere
+    for (auto pizza : pizzas) {
+        delete pizza;
+    }
     delete discountStrategy;
-    pizzas.clear();
+    delete currentState;
 }
 
 void PlaceOrder::addPizza(Pizza* pizza) { 
@@ -208,81 +206,10 @@ int PlaceOrder::getPizzaCount() {
 }
 
 void PlaceOrder::processOrder() {
-    std::cout << "Processing order with " << getPizzaCount() << " pizzas\n";
-    std::cout << "Total cost: R" << calculateTotal() << std::endl;
-    std::cout << "Discount applied: " << discountStrategy->getStrategyName() << std::endl;
+    currentState->handleState(this);
 }
 
-Order::Order() : discountStrategy(new RegularPrice()), currentState(new OrderStartedState()), placeOrder(nullptr) {}
-
-Order::~Order() {
-    for (auto pizza : pizzas) {
-        delete pizza;
-    }
-    delete discountStrategy;
-    delete currentState;
-    delete placeOrder;
-}
-
-void Order::addPizza(Pizza* pizza) { 
-    pizzas.push_back(pizza); 
-    if (placeOrder) {
-        placeOrder->addPizza(pizza);
-    }
-}
-
-void Order::setDiscountStrategy(DiscountStrategy* strategy) {
-    if (discountStrategy != strategy) {
-        delete discountStrategy;
-        discountStrategy = strategy;
-    }
-    
-    if (placeOrder) {
-        // Create a new strategy for PlaceOrder instead of sharing the same instance
-        DiscountStrategy* newStrategy = nullptr;
-        if (dynamic_cast<RegularPrice*>(strategy)) {
-            newStrategy = new RegularPrice();
-        } else if (dynamic_cast<BulkDiscount*>(strategy)) {
-            newStrategy = new BulkDiscount();
-        } else if (dynamic_cast<FamilyDiscount*>(strategy)) {
-            newStrategy = new FamilyDiscount();
-        }
-        if (newStrategy) {
-            placeOrder->setDiscountStrategy(newStrategy);
-        }
-    }
-}
-
-void Order::setPlaceOrder(PlaceOrder* po) { 
-    placeOrder = po; 
-    // Transfer existing pizzas
-    for (auto pizza : pizzas) {
-        placeOrder->addPizza(pizza);
-    }
-    
-    // Create a new strategy for PlaceOrder
-    DiscountStrategy* newStrategy = nullptr;
-    if (dynamic_cast<RegularPrice*>(discountStrategy)) {
-        newStrategy = new RegularPrice();
-    } else if (dynamic_cast<BulkDiscount*>(discountStrategy)) {
-        newStrategy = new BulkDiscount();
-    } else if (dynamic_cast<FamilyDiscount*>(discountStrategy)) {
-        newStrategy = new FamilyDiscount();
-    }
-    if (newStrategy) {
-        placeOrder->setDiscountStrategy(newStrategy);
-    }
-}
-
-double Order::getTotal() { 
-    return placeOrder ? placeOrder->calculateTotal() : 0; 
-}
-
-int Order::getPizzaCount() { 
-    return placeOrder ? placeOrder->getPizzaCount() : pizzas.size(); 
-}
-
-void Order::setState(OrderState* newState) {
+void PlaceOrder::setState(OrderPhase* newState) {
     if (currentState != nullptr) {
         delete currentState;
     }
@@ -290,12 +217,12 @@ void Order::setState(OrderState* newState) {
     std::cout << "Order state changed to: " << currentState->getStateName() << std::endl;
 }
 
-void Order::processOrder() {
-    currentState->handleState(this);
+std::string PlaceOrder::getStatus() const {
+    return currentState->getStateName();
 }
 
-std::string Order::getStatus() const {
-    return currentState->getStateName();
+double PlaceOrder::getTotal() { 
+    return calculateTotal(); 
 }
 
 // ==================== PIZZA FACTORY IMPLEMENTATION ====================
