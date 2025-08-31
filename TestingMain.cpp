@@ -83,6 +83,9 @@ void testStrategyPattern() {
     
     order.setDiscountStrategy(new FamilyDiscount());
     std::cout << "Order total with family discount: R" << order.calculateTotal() << std::endl;
+    
+    // Test order summary
+    order.printOrderSummary();
 }
 
 void testStatePattern() {
@@ -105,6 +108,9 @@ void testStatePattern() {
         order.processOrder();
         std::cout << "State after processing: " << order.getStatus() << std::endl;
     }
+    
+    // Print final order summary
+    order.printOrderSummary();
 }
 
 void testObserverPattern() {
@@ -224,10 +230,12 @@ void testOrderProcessing() {
     }
     
     // Show final order details
-    std::cout << "\nOrder summary:\n";
-    std::cout << "Pizzas: " << order.getPizzaCount() << std::endl;
-    std::cout << "Total: R" << order.getTotal() << std::endl;
-    std::cout << "Status: " << order.getStatus() << std::endl;
+    order.printOrderSummary();
+    
+    // Test clearing the order
+    std::cout << "\nTesting order clearance:\n";
+    order.clearOrder();
+    std::cout << "After clearing - Pizzas: " << order.getPizzaCount() << ", Total: R" << order.getTotal() << std::endl;
     
     // Clean up menu pizzas
     delete pepperoni;
@@ -242,11 +250,13 @@ void testEdgeCases() {
     // Test empty order
     PlaceOrder emptyOrder;
     std::cout << "Empty order total: R" << emptyOrder.calculateTotal() << std::endl;
+    emptyOrder.printOrderSummary();
     
     // Test single pizza order
     PlaceOrder singleOrder;
     singleOrder.addPizza(PizzaFactory::createPepperoniPizza());
     std::cout << "Single pizza order total: R" << singleOrder.calculateTotal() << std::endl;
+    singleOrder.printOrderSummary();
     
     // Test bulk discount threshold (5 pizzas)
     PlaceOrder bulkOrder;
@@ -255,6 +265,7 @@ void testEdgeCases() {
     }
     bulkOrder.setDiscountStrategy(new BulkDiscount());
     std::cout << "5 pizza order with bulk discount: R" << bulkOrder.calculateTotal() << std::endl;
+    bulkOrder.printOrderSummary();
     
     // Test order state with no pizzas
     PlaceOrder emptyStateOrder;

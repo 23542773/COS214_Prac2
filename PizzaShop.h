@@ -217,7 +217,7 @@ public:
     std::string getStateName() const override;
 };
 
-// ==================== PLACE ORDER ====================
+// ==================== MERGED PLACEORDER CLASS ====================
 class PlaceOrder {
 private:
     std::vector<Pizza*> pizzas;
@@ -227,14 +227,22 @@ private:
 public:
     PlaceOrder();
     ~PlaceOrder();
+    
+    // Order management methods
     void addPizza(Pizza* pizza);
     void setDiscountStrategy(DiscountStrategy* strategy);
     double calculateTotal();
     int getPizzaCount();
+    double getTotal();
+    
+    // State management methods
     void processOrder();
     void setState(OrderPhase* newState);
     std::string getStatus() const;
-    double getTotal();
+    
+    // Additional utility methods
+    void printOrderSummary();
+    void clearOrder();
 };
 
 // ==================== Creation methods ====================
