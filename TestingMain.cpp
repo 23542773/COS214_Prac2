@@ -315,6 +315,53 @@ void testObserverRemoval() {
     // Clean up - note: the pizzas added to menu aren't automatically deleted
     // so we need to be careful about memory management here
 }
+void testPreparingToPendingTransition() {
+    std::cout << "\n=== Testing Specific Preparing->Pending Transition ===\n";
+    
+    PlaceOrder order;
+    
+    // Add a test pizza
+    ToppingGroup* pizza = new ToppingGroup("Test Pizza");
+    pizza->add(new Topping(10.00, "Dough"));
+    pizza->add(new Topping(5.00, "Tomato Sauce"));
+    pizza->add(new Topping(15.00, "Cheese"));
+    order.addPizza(new BasePizza(pizza));
+    
+    // Manually set to Preparing state
+    order.setState(new Preparing());
+    std::cout << "Set initial state to: " << order.getStatus() << std::endl;
+    
+    // Process and hope for a backward transition
+    int attempts = 0;
+    while (attempts < 10) {
+        std::string previousState = order.getStatus();
+        order.processOrder();
+        std::string currentState = order.getStatus();
+        
+        std::cout << "Attempt " << attempts + 1 << ": ";
+        std::cout << previousState << " -> " << currentState;
+        
+        if (previousState == "PREPARING" && currentState == "PENDING") {
+            std::cout << " ✅ SUCCESS: Backward transition demonstrated!";
+            std::cout << std::endl;
+            break;
+        }
+        std::cout << std::endl;
+        
+        // Reset to Preparing if we went to READY
+        if (currentState == "READY") {
+            order.setState(new Preparing());
+            std::cout << "Reset to PREPARING for next attempt..." << std::endl;
+        }
+        
+        attempts++;
+    }
+    
+    if (attempts >= 10) {
+        std::cout << "Could not demonstrate backward transition after 10 attempts.\n";
+        std::cout << "The random probability might need adjustment for testing.\n";
+    }
+}
 
 void testMenuPizzaRemoval() {
     std::cout << "\n=== Testing Menu Pizza Removal ===\n";
@@ -359,6 +406,8 @@ int main() {
     testDecoratorPrintMethods();
     testObserverRemoval();              // NEW
     testMenuPizzaRemoval();             // NEW
+    // state moving back
+     testPreparingToPendingTransition();
     
     std::cout << "\n=== All tests completed successfully ===\n";
     
